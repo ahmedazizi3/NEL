@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEL Simulator | Heliocentris Digital Twin</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custome CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar context -->
+        <aside class="sidebar glass-panel">
+            <div class="logo-area">
+                <i class="fa-solid fa-bolt text-primary"></i>
+                <h2>NEL Simulator</h2>
+                <span class="badge">MVP Phase</span>
+            </div>
+            
+            <nav class="nav-menu">
+                <a href="#dashboard" class="nav-item active"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
+                <a href="#solar" class="nav-item"><i class="fa-solid fa-solar-panel"></i> Solar (PV)</a>
+                <a href="#wind" class="nav-item"><i class="fa-solid fa-wind"></i> Wind Energy</a>
+                <a href="#fuelcell" class="nav-item"><i class="fa-solid fa-flask"></i> Fuel Cell / H2</a>
+                <a href="#battery" class="nav-item"><i class="fa-solid fa-car-battery"></i> Battery</a>
+                <a href="#ems" class="nav-item"><i class="fa-solid fa-network-wired"></i> EMS</a>
+            </nav>
+
+            <div class="student-info">
+                <p>Team Project 2024-2025</p>
+                <small>Industrial Networking & AI</small>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-header glass-panel">
+                <div class="header-title">
+                    <h1>Energy Subsystems Simulation</h1>
+                    <p>Machine Learning-Based Digital Twin of Heliocentris Lab</p>
+                </div>
+                <div class="header-actions">
+                    <button id="simulate-all-btn" class="btn btn-primary">
+                        <i class="fa-solid fa-play"></i> Simulate All Models
+                    </button>
+                    <div class="status-indicator">
+                        <span class="pulse-dot"></span>
+                        <span>API Online</span>
+                    </div>
+                </div>
+            </header>
+
+            <div class="dashboard-grid">
+                
+                <!-- Solar Panel Section -->
+                <section id="solar" class="subsystem-card glass-panel">
+                    <div class="card-header">
+                        <div class="card-icon"><i class="fa-solid fa-solar-panel"></i></div>
+                        <h3>Solar (PV) Subsystem</h3>
+                    </div>
+                    <form id="solar-form" class="sim-form">
+                        <div class="input-group">
+                            <label>Irradiance (W/m²)</label>
+                            <input type="number" id="solar-irradiance" value="800" min="0" max="1200" step="10">
+                        </div>
+                        <div class="input-group">
+                            <label>Temperature (°C)</label>
+                            <input type="number" id="solar-temp" value="25" min="-10" max="60" step="1">
+                        </div>
+                        <div class="input-group">
+                            <label>Panel Angle (°)</label>
+                            <input type="number" id="solar-angle" value="30" min="0" max="90" step="1">
+                        </div>
+                        <button type="submit" class="btn btn-secondary mt-1">Predict Power</button>
+                    </form>
+                    <div class="result-area">
+                        <div class="result-value">
+                            <span id="solar-result">0.00</span> <span class="unit">W</span>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="solar-chart"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Wind Energy Section -->
+                <section id="wind" class="subsystem-card glass-panel">
+                    <div class="card-header">
+                        <div class="card-icon"><i class="fa-solid fa-wind"></i></div>
+                        <h3>Wind Energy</h3>
+                    </div>
+                    <form id="wind-form" class="sim-form">
+                        <div class="input-group">
+                            <label>Wind Speed (m/s)</label>
+                            <input type="number" id="wind-speed" value="8" min="0" max="25" step="0.5">
+                        </div>
+                        <button type="submit" class="btn btn-secondary mt-1">Predict Power</button>
+                    </form>
+                    <div class="result-area">
+                        <div class="result-value">
+                            <span id="wind-result">0.00</span> <span class="unit">W</span>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="wind-chart"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Fuel Cell Section -->
+                <section id="fuelcell" class="subsystem-card glass-panel">
+                    <div class="card-header">
+                        <div class="card-icon"><i class="fa-solid fa-flask"></i></div>
+                        <h3>Fuel Cell / H2</h3>
+                    </div>
+                    <form id="fc-form" class="sim-form">
+                        <div class="input-group">
+                            <label>H2 Flow Rate (ml/min)</label>
+                            <input type="number" id="fc-flow" value="20" min="0" max="100" step="1">
+                        </div>
+                        <button type="submit" class="btn btn-secondary mt-1">Predict Power</button>
+                    </form>
+                    <div class="result-area">
+                        <div class="result-value">
+                            <span id="fc-result">0.00</span> <span class="unit">W</span>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="fc-chart"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Battery Section -->
+                <section id="battery" class="subsystem-card glass-panel wide-card">
+                    <div class="card-header">
+                        <div class="card-icon"><i class="fa-solid fa-car-battery"></i></div>
+                        <h3>Battery Management</h3>
+                    </div>
+                    <div class="card-content-flex">
+                        <form id="battery-form" class="sim-form">
+                            <div class="input-group">
+                                <label>Initial SoC (%)</label>
+                                <input type="number" id="bat-soc" value="50" min="0" max="100" step="1">
+                            </div>
+                            <div class="input-group">
+                                <label>Power Input (+W in, -W out)</label>
+                                <input type="number" id="bat-power" value="10" min="-100" max="100" step="1">
+                            </div>
+                            <div class="input-group">
+                                <label>Time Duration (mins)</label>
+                                <input type="number" id="bat-time" value="30" min="1" max="120" step="1">
+                            </div>
+                            <button type="submit" class="btn btn-secondary mt-1">Predict SoC</button>
+                        </form>
+                        <div class="result-area flex-grow">
+                            <label>Final State of Charge</label>
+                            <div class="result-value text-accent">
+                                <span id="bat-result">50.00</span> <span class="unit">%</span>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="battery-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Energy Management System Section -->
+                <section id="ems" class="subsystem-card glass-panel wide-card hero-card">
+                    <div class="card-header">
+                        <div class="card-icon"><i class="fa-solid fa-network-wired"></i></div>
+                        <h3>Energy Management System (EMS)</h3>
+                    </div>
+                    <div class="card-content-flex">
+                        <form id="ems-form" class="sim-form">
+                            <div class="input-group">
+                                <label>Solar Power (W)</label>
+                                <input type="number" id="ems-solar" value="20" min="0" max="200" step="1">
+                            </div>
+                            <div class="input-group">
+                                <label>Wind Power (W)</label>
+                                <input type="number" id="ems-wind" value="30" min="0" max="200" step="1">
+                            </div>
+                            <div class="input-group">
+                                <label>Load Demand (W)</label>
+                                <input type="number" id="ems-load" value="60" min="0" max="300" step="1">
+                            </div>
+                            <button type="submit" class="btn btn-primary mt-1">Evaluate Grid Needs</button>
+                        </form>
+                        <div class="result-area flex-grow align-center">
+                            <label>Grid Power</label>
+                            <div class="result-value large-value text-warning">
+                                <span id="ems-result">0.00</span> <span class="unit">W</span>
+                            </div>
+                            <p class="subtitle">(Positive = Draw from grid / Negative = Feed to grid)</p>
+                            <div class="chart-container" style="height: 120px;">
+                                <canvas id="ems-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Chart JS -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

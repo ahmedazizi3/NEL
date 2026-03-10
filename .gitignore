@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.idea/
+
+# Machine Learning Models
+models/*.pkl
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Flask
+instance/
+.env
+.flaskenv
+
+# OS
+.DS_Store
+Thumbs.db
+nel_datasets/
