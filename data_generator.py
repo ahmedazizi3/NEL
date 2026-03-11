@@ -278,68 +278,135 @@ ts_f = lab_timestamps(sample_minutes=5)
 n_f  = len(ts_f)
 T_out_f = batna_temperature(ts_f)
 
-# Fuel cell characteristic curve
-# Nominal: 100W, 24V, ~4A at rated load
-# Polarisation curve: V = V_OC - R_int*I - B*log(I/I0)
-V_FC_OC  = 28.0   # open circuit voltage
-R_int_FC = 0.8    # internal resistance Ω
-I_FC     = clip(rng.uniform(0.5, 5.5, n_f) + noise(n_f, 0.15), 0.1, 6.0)
+# ── GROUP A — H2 PRODUCTION (inputs come from renewable sources) ──────────────
+# The hydrogen generator is powered by surplus renewable energy
+# (solar + wind), NOT by the grid. This reflects the green hydrogen principle:
+# when generation > load → excess energy goes to the electrolyser → H2 stored.
+
+# Simulate solar and wind for this combined experiment session
+Solar_Rad_f   = batna_solar_rad(ts_f)
+Windspeed_f   = batna_wind_speed(ts_f)
+
+# Solar power (simplified from solar model output)
+P_SOL_total_f = clip(Solar_Rad_f * 0.18 + noise(n_f, 3), 0, 200)   # W
+
+# Wind power (simplified from wind turbine model)
+def _wind_power(v):
+    p = np.zeros_like(v)
+    mask = (v >= 1.5) & (v < 8.0)
+    p[mask] = 150 * ((v[mask] - 1.5) / 6.5) ** 3
+    p[v >= 8.0] = 150.0
+    return p
+P_Wind_f = clip(_wind_power(Windspeed_f) + noise(n_f, 2), 0, 150)  # W
+
+# Battery SoC at the moment of the experiment
+SoC_BB_f = clip(rng.uniform(20, 100, n_f) + noise(n_f, 1), 15, 100)  # %
+
+# Load demand during the session
+load_profile_set_f = clip(100 + 80 * np.sin(np.pi * (ts_f.hour - 8) / 10)
+                          + noise(n_f, 15), 50, 400)                  # W
+
+# Renewable surplus → drives the electrolyser
+# If surplus > 0: electrolyser runs and produces H2
+# If surplus <= 0 (or battery SoC < 20%): fall back to battery or FC alone
+renewable_total_f = P_SOL_total_f + P_Wind_f
+surplus_f = clip(renewable_total_f - load_profile_set_f, 0, None)    # W
+
+# H2 flow from electrolyser: proportional to surplus power
+# ~0.42 Nl/min per 100W of surplus (real electrolyser efficiency ~65%)
+H2_Flow_HG = clip(surplus_f * 0.0042 + noise(n_f, 0.001), 0, 2.0)   # Nl/min
+
+# H2 pressure builds as function of flow rate and session duration
+H2_Pres_HG = clip(H2_Flow_HG * 1.8 + 2.0 + noise(n_f, 0.1), 0, 5.0)  # bar
+
+# Electrolyser electrical measurements
+# P_HG is the power consumed by the electrolyser (= surplus used)
+P_HG  = clip(surplus_f * 0.65 + noise(n_f, 2), 0, None)              # W  (65% efficiency)
+V_HG  = clip(2.0 + 0.4 * np.sqrt(np.where(P_HG > 0, P_HG, 0))
+             + noise(n_f, 0.15), 2.0, 8.0)                            # V
+I_HG  = clip(np.where(V_HG > 0.5, P_HG / V_HG, 0)
+             + noise(n_f, 0.1), 0, 9.0)                               # A
+
+# ── GROUP B — FUEL CELL (inputs come from Group A outputs) ───────────────────
+# Fuel cell activates when H2 pressure is sufficient (> 1 bar)
+# and renewable sources alone cannot meet the load demand.
+
+# Polarisation curve: V = V_OC − R_int×I − B×log(I/I0 + 1)
+V_FC_OC  = 28.0    # V  open circuit voltage
+R_int_FC = 0.8     # Ω  internal resistance
+I_FC     = clip(rng.uniform(0.5, 5.5, n_f) + noise(n_f, 0.15), 0.1, 6.0)  # A
+
+# FC only produces power when H2 pressure is available
+fc_active = (H2_Pres_HG > 1.0).astype(float)
+I_FC      = I_FC * fc_active
+
 V_FC     = V_FC_OC - R_int_FC * I_FC - 1.2 * np.log(I_FC / 0.1 + 1)
-V_FC     = clip(V_FC + noise(n_f, 0.2), 10, 28)
-P_FC     = V_FC * I_FC
+V_FC     = clip(V_FC + noise(n_f, 0.2), 0, 28)
+P_FC     = clip(V_FC * I_FC, 0, 100)                                  # W
 I_FC_int = clip(I_FC * 1.05 + noise(n_f, 0.05), 0, 6.5)
 
 # Temperature: rises with load, ambient baseline
 T_FC = T_out_f + 15 + P_FC * 0.1 + noise(n_f, 1.5)
 T_FC = clip(T_FC, 20, 75)
 
-# Hydrogen consumption: ~0.9 Nl/h per 10W output
-H2_Flow = clip(P_FC * 0.09 + noise(n_f, 0.02), 0.01, 0.6)  # Nl/min
-H2_Pres_FC = clip(rng.uniform(3.5, 4.2, n_f) + noise(n_f, 0.05), 2.0, 5.0)  # bar
-
-# Hydrogen generator (electrolyser)
-# Input: grid power, output: H2 at ~4 bar
-I_HG = clip(rng.uniform(1.0, 8.0, n_f) + noise(n_f, 0.2), 0.5, 9.0)
-V_HG = clip(2.0 + 0.5 * I_HG + noise(n_f, 0.15), 2.0, 8.0)
-P_HG = V_HG * I_HG
-H2_Flow_HG  = clip(P_HG * 0.004 + noise(n_f, 0.001), 0, 0.05)  # Nl/min (electrolysis rate)
-H2_Pres_HG  = clip(3.8 + noise(n_f, 0.1), 3.0, 5.0)
+# H2 consumption at FC inlet (drawn from stored H2)
+H2_Flow_FC = clip(P_FC * 0.009 + noise(n_f, 0.002), 0.0, 0.6)        # Nl/min
+H2_Pres_FC = clip(H2_Pres_HG - H2_Flow_FC * 0.5
+                  + noise(n_f, 0.05), 0, 5.0)                          # bar
 
 # DC-DC converter (fuel cell → buffer battery bus)
-V_BB_f      = clip(rng.uniform(24, 28, n_f) + noise(n_f, 0.3), 22, 30)
-I_FC_DCDC   = clip(I_FC * 0.92 + noise(n_f, 0.05), 0, 6.0)
-P_FC_DCDC   = V_BB_f * I_FC_DCDC
+V_BB_f    = clip(rng.uniform(24, 28, n_f) + noise(n_f, 0.3), 22, 30)  # V
+I_FC_DCDC = clip(I_FC * 0.92 + noise(n_f, 0.05), 0, 6.0)
+P_FC_DCDC = V_BB_f * I_FC_DCDC
 
 # Efficiencies
-Efficiency_FC = clip((P_FC / (H2_Flow * 60 * 3.5 + 0.01)) * 100, 35, 60)  # H2 HHV~3.5 Wh/Nl
-Efficiency_HG = clip((H2_Flow_HG * 60 * 3.5 / (P_HG + 0.01)) * 100, 50, 75)
+Efficiency_FC = clip(
+    np.where(H2_Flow_FC > 0,
+             (P_FC / (H2_Flow_FC * 60 * 3.5 + 0.01)) * 100,
+             0), 0, 60)                                                 # %
+Efficiency_HG = clip(
+    np.where(P_HG > 0,
+             (H2_Flow_HG * 60 * 3.5 / (P_HG + 0.01)) * 100,
+             0), 0, 75)                                                 # %
 
 # Load
 V_Load_f = clip(V_BB_f + noise(n_f, 0.2), 20, 30)
-I_Load_f = clip(P_FC / np.where(V_Load_f > 1, V_Load_f, 1) * rng.uniform(0.7, 0.95, n_f), 0, 5)
+I_Load_f = clip(P_FC / np.where(V_Load_f > 1, V_Load_f, 1)
+                * rng.uniform(0.7, 0.95, n_f), 0, 5)
 
 df_fc = pd.DataFrame({
-    "timestamp":        ts_f,
-    "V_FC_V":           np.round(V_FC, 3),
-    "I_FC_A":           np.round(I_FC, 3),
-    "I_FC_int_A":       np.round(I_FC_int, 3),
-    "P_FC_W":           np.round(P_FC, 3),
-    "T_FC_C":           np.round(T_FC, 2),
-    "H2_Flow_NLmin":    np.round(H2_Flow, 4),
-    "H2_Pres_FC_bar":   np.round(H2_Pres_FC, 3),
-    "V_HG_V":           np.round(V_HG, 3),
-    "I_HG_A":           np.round(I_HG, 3),
-    "P_HG_W":           np.round(P_HG, 3),
-    "H2_Flow_HG_NLmin": np.round(H2_Flow_HG, 5),
-    "H2_Pres_HG_bar":   np.round(H2_Pres_HG, 3),
-    "V_BB_V":           np.round(V_BB_f, 3),
-    "I_FC_DCDC_A":      np.round(I_FC_DCDC, 3),
-    "P_FC_DCDC_W":      np.round(P_FC_DCDC, 3),
-    "Efficiency_FC_pct":np.round(Efficiency_FC, 2),
-    "Efficiency_HG_pct":np.round(Efficiency_HG, 2),
-    "V_Load_V":         np.round(V_Load_f, 3),
-    "I_Load_A":         np.round(I_Load_f, 3),
-    "T_outdoor_C":      np.round(T_out_f, 2),
+    "timestamp":            ts_f,
+
+    # ── Group A: H2 Production model inputs (from renewable sources) ──
+    "P_SOL_total_W":        np.round(P_SOL_total_f, 3),   # from solar model
+    "P_Wind_W":             np.round(P_Wind_f, 3),         # from wind model
+    "SoC_BB_pct":           np.round(SoC_BB_f, 2),         # from battery model
+    "load_profile_set_W":   np.round(load_profile_set_f, 2),
+    # ── Group A: H2 Production model outputs ──────────────────────────
+    "H2_Flow_HG_NLmin":     np.round(H2_Flow_HG, 4),
+    "H2_Pres_HG_bar":       np.round(H2_Pres_HG, 3),
+    "V_HG_V":               np.round(V_HG, 3),
+    "I_HG_A":               np.round(I_HG, 3),
+    "P_HG_W":               np.round(P_HG, 3),
+    "Efficiency_HG_pct":    np.round(Efficiency_HG, 2),
+
+    # ── Group B: Fuel Cell model inputs (from Group A outputs) ────────
+    # H2_Flow_HG and H2_Pres_HG flow directly from Group A above
+    "T_FC_C":               np.round(T_FC, 2),
+    "I_FC_A":               np.round(I_FC, 3),
+    # ── Group B: Fuel Cell model outputs ──────────────────────────────
+    "V_FC_V":               np.round(V_FC, 3),
+    "I_FC_int_A":           np.round(I_FC_int, 3),
+    "P_FC_W":               np.round(P_FC, 3),
+    "H2_Flow_FC_NLmin":     np.round(H2_Flow_FC, 4),
+    "H2_Pres_FC_bar":       np.round(H2_Pres_FC, 3),
+    "Efficiency_FC_pct":    np.round(Efficiency_FC, 2),
+    "V_BB_V":               np.round(V_BB_f, 3),
+    "I_FC_DCDC_A":          np.round(I_FC_DCDC, 3),
+    "P_FC_DCDC_W":          np.round(P_FC_DCDC, 3),
+    "V_Load_V":             np.round(V_Load_f, 3),
+    "I_Load_A":             np.round(I_Load_f, 3),
+    "T_outdoor_C":          np.round(T_out_f, 2),
 })
 df_fc.to_csv(f"{OUT}/dataset_fuelcell.csv", index=False)
 print(f"  ✓ dataset_fuelcell.csv — {len(df_fc):,} rows")
@@ -462,12 +529,31 @@ V_BB_e = clip(V_BB_e, 21, 29)
 I_BB_e = clip(rng.uniform(-6, 6, n_e) + noise(n_e, 0.2), -8, 8)
 
 # Active source decision logic
+# Priority: Solar → Wind → FuelCell (if H2 available) → Grid → Battery
+
+# Compute H2 availability in this EMS session
+# (derived from renewable surplus, consistent with fuelcell dataset logic)
+surplus_e    = clip(Solar_Rad_e * 0.18 + Windspeed_e ** 2 * 0.5
+                    - (200 + 150 * np.sin(np.pi * (ts_e.hour + ts_e.minute/60 - 8) / 10)),
+                    0, None)                                            # W  renewable surplus
+H2_Flow_HG_e = clip(surplus_e * 0.0042 + noise(n_e, 0.001), 0, 2.0)  # Nl/min
+H2_Pres_HG_e = clip(H2_Flow_HG_e * 1.8 + 2.0 + noise(n_e, 0.1), 0, 5.0)  # bar
+
+# FC power: only when H2 pressure > 1 bar and solar/wind are insufficient
+fc_needed    = (Solar_Rad_e < 200) & (Windspeed_e < 3.0)
+fc_possible  = H2_Pres_HG_e > 1.0
+P_FC_e       = clip(
+    np.where(fc_needed & fc_possible,
+             rng.uniform(10, 80, n_e) + noise(n_e, 2), 0), 0, 100)   # W
+
 active_source = []
 for i in range(n_e):
     if Solar_Rad_e[i] > 300:
         active_source.append("Solar")
     elif Windspeed_e[i] > 3.0:
         active_source.append("Wind")
+    elif H2_Pres_HG_e[i] > 1.0 and fc_needed[i]:
+        active_source.append("FuelCell")
     elif grid_status[i] == 1:
         active_source.append("Grid")
     else:
@@ -486,7 +572,8 @@ P_Load_e = V_Load_e * I_Load_e
 
 net_power_balance = (
                             Solar_Rad_e * 0.04 +       # rough solar contribution W
-                            Windspeed_e ** 3 * 0.002   # rough wind contribution W
+                            Windspeed_e ** 3 * 0.002 + # rough wind contribution W
+                            P_FC_e                     # fuel cell contribution W
                     ) - P_Load_e + noise(n_e, 10)
 
 # 12V DC external loads (E04)
@@ -501,6 +588,11 @@ df_em = pd.DataFrame({
     "SoC_BB_pct":          np.round(SoC_BB_e, 2),
     "V_BB_V":              np.round(V_BB_e, 3),
     "I_BB_A":              np.round(I_BB_e, 3),
+    # H2 availability — passed in from H2 Production model output
+    "H2_Flow_HG_NLmin":    np.round(H2_Flow_HG_e, 4),
+    "H2_Pres_HG_bar":      np.round(H2_Pres_HG_e, 3),
+    # FC output — passed in from Fuel Cell model output
+    "P_FC_W":              np.round(P_FC_e, 3),
     "active_source":       active_source,
     "load_profile_W":      np.round(load_profile, 2),
     "Solar_Rad_Wm2":       np.round(Solar_Rad_e, 1),
