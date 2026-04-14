@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find \"C:\\\\Users\\\\azizi\\\\My Drive\\\\HNS-RE2SD\\\\Industrial Networking & AI Engineering\\\\4th Year\\\\SEMESTER 08\\\\Project 02\\\\NEL\" -type f -name \"*\")",
+      "Bash(ls -la \"C:\\\\Users\\\\azizi\\\\My Drive\\\\HNS-RE2SD\\\\Industrial Networking & AI Engineering\\\\4th Year\\\\SEMESTER 08\\\\Project 02\\\\NEL\")"
+    ]
+  }
+}
