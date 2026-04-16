@@ -20,6 +20,21 @@
         SEARCH_DEBOUNCE_MS: 400,
     };
 
+    /* ── Firebase Configuration ─────────────────────────────── */
+    const firebaseConfig = {
+        apiKey: "AIzaSyAUFm9a657qFueCDddSyy6vm2swHEN19tg",
+        authDomain: "se-nel.firebaseapp.com",
+        projectId: "se-nel",
+        storageBucket: "se-nel.firebasestorage.app",
+        messagingSenderId: "252917296517",
+        appId: "1:252917296517:web:4c9d07820fd72443dc68ec",
+        measurementId: "G-3RCW3MY9D2"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+
     function cssVar(name) {
         return getComputedStyle(document.body).getPropertyValue(name).trim();
     }
@@ -1345,9 +1360,163 @@
     }
 
     /* ══════════════════════════════════════════════════════════
+       MODULE 8 — Firebase Authentication
+       ══════════════════════════════════════════════════════════ */
+    function initFirebaseAuth() {
+        const authModal = document.getElementById('auth-modal');
+        const appShell = document.getElementById('app-shell');
+        const loginForm = document.getElementById('auth-form');
+        const signupForm = document.getElementById('signup-form');
+        const loginToggle = document.getElementById('auth-signup-toggle');
+        const signupToggle = document.getElementById('signup-login-toggle');
+        const loginError = document.getElementById('auth-error');
+        const signupError = document.getElementById('signup-error');
+        const userEmailEl = document.getElementById('user-email');
+        const logoutBtn = document.getElementById('logout-btn');
+
+        // Show/hide modal
+        function showModal(show, signup) {
+            if (show) {
+                authModal.classList.remove('hidden');
+                authModal.style.pointerEvents = 'auto';
+            } else {
+                authModal.classList.add('hidden');
+                authModal.style.pointerEvents = 'none';
+            }
+            appShell.style.display = show ? 'none' : 'flex';
+            loginForm.style.display = signup ? 'none' : 'flex';
+            signupForm.style.display = signup ? 'flex' : 'none';
+            loginError.textContent = '';
+            signupError.textContent = '';
+        }
+
+        // Update UI based on auth state
+        function updateAuthUI(user) {
+            if (user) {
+                // User is signed in
+                userEmailEl.textContent = user.email;
+                logoutBtn.style.display = 'flex';
+                showModal(false, false);
+            } else {
+                // User is signed out
+                userEmailEl.textContent = '';
+                logoutBtn.style.display = 'none';
+                showModal(true, false);
+            }
+        }
+
+        // Listen to auth state changes
+        auth.onAuthStateChanged((user) => {
+            updateAuthUI(user);
+        });
+
+        // Login handler
+        loginForm.onsubmit = async function(e) {
+            e.preventDefault();
+            const email = document.getElementById('auth-email').value.trim();
+            const password = document.getElementById('auth-password').value;
+
+            try {
+                await auth.signInWithEmailAndPassword(email, password);
+                showToast('Signed in successfully', 'success');
+                loginForm.reset();
+            } catch (error) {
+                loginError.textContent = error.message;
+            }
+        };
+
+        // Signup handler
+        signupForm.onsubmit = async function(e) {
+            e.preventDefault();
+            const email = document.getElementById('signup-email').value.trim();
+            const password = document.getElementById('signup-password').value;
+            const confirmPassword = document.getElementById('signup-confirm').value;
+
+            // Validation
+            if (password !== confirmPassword) {
+                signupError.textContent = 'Passwords do not match.';
+                return;
+            }
+
+            if (password.length < 6) {
+                signupError.textContent = 'Password must be at least 6 characters.';
+                return;
+            }
+
+            try {
+                await auth.createUserWithEmailAndPassword(email, password);
+                showToast('Account created successfully', 'success');
+                signupForm.reset();
+            } catch (error) {
+                signupError.textContent = error.message;
+            }
+        };
+
+        // Toggle between login/signup
+        loginToggle.onclick = function(e) {
+            e.preventDefault();
+            showModal(true, true);
+        };
+        signupToggle.onclick = function(e) {
+            e.preventDefault();
+            showModal(true, false);
+        };
+
+        // Logout handler
+        logoutBtn.addEventListener('click', async () => {
+            try {
+                await auth.signOut();
+                showToast('Signed out successfully', 'info');
+            } catch (error) {
+                showToast('Error signing out: ' + error.message, 'error');
+            }
+        });
+
+        // Password visibility toggles
+        document.getElementById('auth-password-toggle').addEventListener('click', function() {
+            const input = document.getElementById('auth-password');
+            const icon = this.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'fa-solid fa-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'fa-solid fa-eye';
+            }
+        });
+
+        document.getElementById('signup-password-toggle').addEventListener('click', function() {
+            const input = document.getElementById('signup-password');
+            const icon = this.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'fa-solid fa-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'fa-solid fa-eye';
+            }
+        });
+
+        document.getElementById('signup-confirm-toggle').addEventListener('click', function() {
+            const input = document.getElementById('signup-confirm');
+            const icon = this.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'fa-solid fa-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'fa-solid fa-eye';
+            }
+        });
+    }
+
+    /* ══════════════════════════════════════════════════════════
        MODULE 9 — App Initialization
        ══════════════════════════════════════════════════════════ */
     async function init() {
+        // Initialize Firebase Auth
+        initFirebaseAuth();
+
         // Load persisted state
         const hadSavedData = !!localStorage.getItem('nel_charts');
         PersistenceManager.loadAll();

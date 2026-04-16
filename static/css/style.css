@@ -3,6 +3,190 @@
    Clean modern palette with dark/light modes
    ═══════════════════════════════════════════════════════════════ */
 
+/* ─── Authentication Modal ─── */
+.auth-modal {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    background: rgba(6, 10, 19, 0.75);
+    backdrop-filter: blur(4px);
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.auth-modal.hidden {
+    display: none;
+}
+
+.auth-modal-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.auth-form {
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    padding: 2rem 2.5rem;
+    border-radius: 14px;
+    min-width: 360px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--glass-border);
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+}
+
+.auth-title {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.5em;
+    font-weight: 600;
+    text-align: center;
+}
+
+.auth-input {
+    padding: 0.7em;
+    border-radius: 7px;
+    border: 1px solid var(--glass-border);
+    background: var(--bg-input);
+    color: var(--text-primary);
+    font-size: 1em;
+    font-family: inherit;
+    transition: all var(--transition-fast);
+}
+
+.auth-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.auth-input::placeholder {
+    color: var(--text-muted);
+}
+
+.password-input-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-input-container .auth-input {
+    flex: 1;
+    padding-right: 2.5em;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 0.5em;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0.5em;
+    font-size: 0.9em;
+    transition: color var(--transition-fast);
+}
+
+.password-toggle:hover {
+    color: var(--text-primary);
+}
+
+.auth-btn {
+    border: none;
+    border-radius: 7px;
+    padding: 0.75em 0;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 1em;
+    transition: all var(--transition-fast);
+    font-family: inherit;
+}
+
+.auth-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.auth-btn-primary {
+    background: var(--primary);
+    color: #fff;
+}
+
+.auth-btn-primary:hover:not(:disabled) {
+    background: var(--accent);
+    transform: translateY(-2px);
+}
+
+.auth-btn-success {
+    background: var(--success);
+    color: #fff;
+}
+
+.auth-btn-success:hover:not(:disabled) {
+    background: var(--primary);
+    transform: translateY(-2px);
+}
+
+.auth-toggle {
+    font-size: 0.95em;
+    text-align: center;
+}
+
+.auth-toggle a {
+    color: var(--primary);
+    text-decoration: underline;
+    cursor: pointer;
+    transition: color var(--transition-fast);
+}
+
+.auth-toggle a:hover {
+    color: var(--accent);
+}
+
+.auth-error {
+    min-height: 1.5em;
+    color: var(--danger);
+    font-size: 0.97em;
+    text-align: center;
+    padding: 0.5em;
+    background: rgba(239, 68, 68, 0.08);
+    border-radius: 6px;
+}
+
+/* ─── Top Bar Auth Elements ─── */
+.user-email {
+    font-size: 0.9em;
+    color: var(--text-secondary);
+    margin-right: 1rem;
+}
+
+.logout-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 4px;
+    transition: all var(--transition-fast);
+    font-size: 1rem;
+}
+
+.logout-btn:hover {
+    background: rgba(239, 68, 68, 0.12);
+    color: var(--danger);
+    border-color: rgba(239, 68, 68, 0.25);
+}
+
+/* ─── Responsive Auth Modal ─── */
+@media (max-width: 480px) {
+    .auth-form {
+        min-width: calc(100vw - 2rem);
+        max-width: 100%;
+    }
+}
+
 /* ── CSS Custom Properties ─────────────────────────────────── */
 :root {
     /* Core design tokens */
