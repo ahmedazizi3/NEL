@@ -12,8 +12,6 @@ try:
     solar_model = joblib.load(os.path.join(models_dir, 'solar_model.pkl'))
     wind_model = joblib.load(os.path.join(models_dir, 'wind_model.pkl'))
     fc_model = joblib.load(os.path.join(models_dir, 'fc_model.pkl'))
-    battery_model = joblib.load(os.path.join(models_dir, 'battery_model.pkl'))
-    ems_model = joblib.load(os.path.join(models_dir, 'ems_model.pkl'))
     models_loaded = True
 except Exception as e:
     print(f"Error loading models: {e}")
@@ -57,38 +55,6 @@ def predict_fc():
         X = pd.DataFrame([{'h2_flow': float(data['h2_flow'])}])
         pred = fc_model.predict(X)[0]
         return jsonify({'power': round(max(0, pred), 2)})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 400
-
-@app.route('/api/predict/battery', methods=['POST'])
-def predict_battery():
-    if not models_loaded: return jsonify({'error': 'Models not loaded'}), 500
-    try:
-        data = request.json
-        X = pd.DataFrame([{
-            'initial_soc': float(data['initial_soc']),
-            'power_input': float(data['power_input']),
-            'time_min': float(data['time_min'])
-        }])
-        pred = battery_model.predict(X)[0]
-        # clip to 0-100
-        pred = max(0, min(100, pred))
-        return jsonify({'final_soc': round(pred, 2)})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 400
-
-@app.route('/api/predict/ems', methods=['POST'])
-def predict_ems():
-    if not models_loaded: return jsonify({'error': 'Models not loaded'}), 500
-    try:
-        data = request.json
-        X = pd.DataFrame([{
-            'solar_p': float(data['solar_p']),
-            'wind_p': float(data['wind_p']),
-            'load_p': float(data['load_p'])
-        }])
-        pred = ems_model.predict(X)[0]
-        return jsonify({'grid_power': round(pred, 2)})
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 

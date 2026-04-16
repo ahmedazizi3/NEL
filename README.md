@@ -17,13 +17,21 @@ This project was developed as part of the **Industrial Networking & Artificial I
 
 ## ✨ Features
 
+- 🔐 **User Authentication** — Secure login/signup with Firebase Auth
+- 🗺️ **Interactive Map** — Select locations worldwide with Leaflet integration
+- 🌤️ **Real-Time Weather** — Live weather data from Open-Meteo API
 - 🌞 **Solar PV Simulation** — Predict power output based on irradiance, temperature, and panel angle
 - 💨 **Wind Energy Simulation** — Simulate turbine output from wind speed and load conditions
 - ⚗️ **Fuel Cell & Hydrogen Simulation** — Model fuel cell characteristics and hydrogen generator behavior
-- 🔋 **Battery Management Simulation** — Predict charge/discharge curves and State of Charge
+- 🔋 **Battery Management Simulation** — Predict charge/discharge curves and State of Charge with animated visualization
 - ⚡ **Energy Management Simulation** — Simulate grid/island switching, load balancing, and power flow
-- 📊 **Interactive Web Interface** — Real-time charts and result visualization in the browser
+- 📊 **Interactive Charts** — Real-time data visualization with Chart.js
 - 🤖 **ML-Powered Predictions** — Separate trained models per subsystem for accurate simulation
+- 🎨 **Dark/Light Theme** — Customizable UI themes
+- ⚙️ **Settings Panel** — Configure graph visibility, update intervals, and model parameters
+- 🔍 **Model Inspector** — Inspect and edit ML model parameters in real-time
+- 💾 **Data Persistence** — Session data saved across browser restarts
+- 📱 **Responsive Design** — Works on desktop and mobile devices
 
 ---
 
@@ -31,14 +39,17 @@ This project was developed as part of the **Industrial Networking & Artificial I
 
 | Layer | Technology |
 |---|---|
-| Language | Python 3 |
-| Web Framework | Flask |
-| Machine Learning | Scikit-learn |
-| Data Processing | Pandas, NumPy |
-| Visualization | Chart.js / Plotly |
-| Frontend | HTML, CSS, JavaScript |
-| Model Serialization | Pickle / Joblib |
+| Backend | Python 3, Flask |
+| Frontend | HTML5, CSS3, JavaScript (ES6+) |
+| Authentication | Firebase Auth |
+| Maps | Leaflet.js |
+| Charts | Chart.js |
+| Weather API | Open-Meteo |
+| Machine Learning | Scikit-learn, Pandas, NumPy |
+| Data Visualization | Chart.js, Plotly (notebooks) |
+| Model Serialization | Pickle, Joblib |
 | Version Control | Git + GitHub |
+| Hosting | Local Flask server |
 
 ---
 
@@ -46,21 +57,38 @@ This project was developed as part of the **Industrial Networking & Artificial I
 
 ```
 NEL/
-├── app.py                  # Flask application entry point
-├── data_generator.py       # Data collection and preprocessing utilities
-├── requirements.txt        # Python dependencies
-├── models/                 # Trained ML model files (.pkl)
-│   ├── solar_model.pkl
-│   ├── wind_model.pkl
-│   ├── fc_model.pkl
-│   ├── battery_model.pkl
-│   └── ems_model.pkl
-├── static/
-│   ├── css/style.css       # Application styles
-│   └── js/main.js          # Frontend logic and chart rendering
+├── app.py                          # Flask application entry point with API endpoints
+├── data_generator.py               # Data collection and preprocessing utilities
+├── requirements.txt                # Python dependencies
+├── README.md                       # Project documentation
+├── models/                         # Trained ML model files
+│   ├── fc_model.pkl                # Fuel cell model
+│   ├── h2_production_model.pkl     # Hydrogen production model
+│   ├── solar_model.pkl             # Solar PV model
+│   ├── solar_model_summary.json    # Solar model metadata
+│   └── wind_model.pkl              # Wind turbine model
+├── nel_datasets/                   # Raw & processed datasets (not tracked by Git)
+│   ├── dataset_battery.csv
+│   ├── dataset_energy_management.csv
+│   ├── dataset_fuelcell.csv
+│   ├── dataset_solar.csv
+│   └── dataset_wind.csv
+├── notebooks/                      # Jupyter notebooks for model development
+│   └── 01_solar_model.ipynb
+├── preprocessors/                  # Data preprocessing pipelines
+│   └── solar_scaler.pkl
+├── static/                         # Static assets
+│   ├── css/
+│   │   └── style.css               # Application styles with themes
+│   └── js/
+│       └── main.js                 # Frontend logic, charts, auth, map integration
 ├── templates/
-│   └── index.html          # Main web interface
-└── nel_datasets/           # Raw & processed datasets (not tracked by Git)
+│   └── index.html                  # Main web interface
+└── docs/                           # Documentation (various setup guides)
+    ├── AUTH_IMPROVEMENTS_V2.md
+    ├── FIREBASE_AUTH_SETUP.md
+    ├── GOOGLE_ACCOUNT_AUTOMERGE.md
+    └── GOOGLE_AUTH_SETUP.md
 ```
 
 ---
@@ -72,6 +100,7 @@ NEL/
 - Python 3.8 or higher
 - pip
 - Git
+- Node.js (for development, optional)
 
 ### Installation
 
@@ -98,6 +127,17 @@ python app.py
 
 Then open your browser and go to: **http://localhost:5000**
 
+### Firebase Setup
+
+To enable authentication, configure Firebase:
+
+1. Create a Firebase project at https://console.firebase.google.com/
+2. Enable Authentication with Email/Password provider
+3. Copy your Firebase config to `main.js`
+4. Update security rules as needed
+
+See `FIREBASE_AUTH_SETUP.md` for detailed instructions.
+
 ---
 
 ## 📊 Datasets
@@ -106,11 +146,11 @@ Each energy subsystem has its own dedicated dataset collected from the physical 
 
 | Dataset | Source Experiments | Key Features |
 |---|---|---|
-| `solar_dataset.csv` | S01 – S06 | V_SOL, I_SOL, Solar_Rad, T_SOL, tilt/azimuth angle |
-| `wind_dataset.csv` | W01 – W03 | Windspeed, V_Wind, I_Wind, V_WB, I_WB |
-| `fuelcell_dataset.csv` | F01 – F04 | V_FC, I_FC, T_FC, H2_Flow, H2_Pres |
-| `battery_dataset.csv` | B01 – B03 | V_WB, V_BB, SoC, internal_resistance |
-| `ems_dataset.csv` | E01 – E04 | grid_status, active_source, SoC_BB, load_profile |
+| `dataset_solar.csv` | S01 – S06 | V_SOL, I_SOL, Solar_Rad, T_SOL, tilt/azimuth angle |
+| `dataset_wind.csv` | W01 – W03 | Windspeed, V_Wind, I_Wind, V_WB, I_WB |
+| `dataset_fuelcell.csv` | F01 – F04 | V_FC, I_FC, T_FC, H2_Flow, H2_Pres |
+| `dataset_battery.csv` | B01 – B03 | V_WB, V_BB, SoC, internal_resistance |
+| `dataset_energy_management.csv` | E01 – E04 | grid_status, active_source, SoC_BB, load_profile |
 
 > ⚠️ Raw datasets are **not tracked by Git** (`nel_datasets/` is in `.gitignore`). Contact the team for access or collect directly from the NEL station using Procedure P01 (Data Logging).
 
@@ -120,15 +160,16 @@ Each energy subsystem has its own dedicated dataset collected from the physical 
 
 Each subsystem uses a separately trained model:
 
-| Model | Algorithm | Target Variable |
-|---|---|---|
-| `solar_model.pkl` | Random Forest Regressor | P_SOL_total (W) |
-| `wind_model.pkl` | Random Forest Regressor | P_Wind (W) |
-| `fc_model.pkl` | Gradient Boosting Regressor | P_FC (W), Efficiency_FC (%) |
-| `battery_model.pkl` | Random Forest Regressor | SoC (%), V_WB (V) |
-| `ems_model.pkl` | Random Forest Classifier/Regressor | net_power_balance (W), active_source |
+| Model | Algorithm | Target Variable | Status |
+|---|---|---|---|
+| `solar_model.pkl` | Random Forest Regressor | P_SOL_total (W) | ✅ Active |
+| `wind_model.pkl` | Random Forest Regressor | P_Wind (W) | ✅ Active |
+| `fc_model.pkl` | Gradient Boosting Regressor | P_FC (W), Efficiency_FC (%) | ✅ Active |
+| `h2_production_model.pkl` | — | H2 production rate | ✅ Active |
+| `battery_model.pkl` | Random Forest Regressor | SoC (%), V_WB (V) | ⚠️ Fallback to physics |
+| `ems_model.pkl` | Random Forest Classifier/Regressor | net_power_balance (W), active_source | ⚠️ Fallback to physics |
 
-> Models are retrained as more data is collected from the station. See `data_generator.py` for the training pipeline.
+> Models are retrained as more data is collected from the station. See `data_generator.py` for the training pipeline and `notebooks/` for development examples.
 
 ---
 
@@ -151,8 +192,8 @@ Each subsystem uses a separately trained model:
 |---|---|---|
 | Data Collection & EDA | Feb 2026 → Mar 2026 | Clean datasets for all 5 subsystems |
 | ML Model Development | Mar 2026 → Apr 2026 | Trained & validated models |
-| Web App Development | Mar 2026 → Apr 2026 | Functional Flask application |
-| Integration & Testing | Apr 2026 → May 2026 | Fully integrated simulator |
+| Web App Development | Mar 2026 → Apr 2026 | Functional Flask application with auth & maps |
+| Integration & Testing | Apr 2026 → May 2026 | Fully integrated simulator with animations |
 | Documentation & Delivery | May 2026 | Final report + deployment |
 
 ---

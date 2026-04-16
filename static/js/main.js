@@ -90,6 +90,7 @@
         mapTileLayer: null,
         selectedModelKey: null,
         latestModelDetails: {},
+        dischargeInterval: null,
     };
 
     /* ══════════════════════════════════════════════════════════
@@ -313,6 +314,9 @@
         }
 
         state.location = { lat, lng, name: shortName };
+
+        // Start battery discharge animation
+        startBatteryDischarge();
 
         // Update map overlay badge
         document.getElementById('location-name').textContent = shortName;
@@ -713,6 +717,7 @@
                 battery: newSoC,
                 ems: gridPower,
                 load: loadDemand,
+                netPower: netPower,
             };
 
             // Update charts & values
@@ -783,6 +788,9 @@
         animateValue('val-fc', state.latestResults.fc, 2);
         animateValue('val-battery', state.latestResults.battery, 2);
         animateValue('val-ems', state.latestResults.ems, 2);
+
+        // Update battery animation
+        updateBatteryAnimation();
     }
 
     function updatePowerSummary() {
@@ -865,7 +873,7 @@
                 const points = chart.getElementsAtEventForMode(event, 'nearest', { intersect: false }, true);
                 if (!points.length) return;
                 const datasetIndex = points[0].datasetIndex;
-                const map = ['solar', 'wind', 'fc', 'battery', 'ems'];
+                const map = ['solar', 'wind', 'fc'];
                 const key = map[datasetIndex];
                 if (key) openModelInspector(key);
             },
@@ -951,22 +959,6 @@
                         fill: false,
                         hidden: state.preferences.visible.fc === false,
                     },
-                    {
-                        label: 'Battery SoC (%)',
-                        data: [],
-                        borderColor: series.battery.border,
-                        backgroundColor: series.battery.bg,
-                        fill: false,
-                        hidden: state.preferences.visible.battery === false,
-                    },
-                    {
-                        label: 'EMS Grid (W)',
-                        data: [],
-                        borderColor: series.ems.border,
-                        backgroundColor: series.ems.bg,
-                        fill: false,
-                        hidden: state.preferences.visible.ems === false,
-                    },
                 ],
             },
             options: mainOpts,
@@ -1001,10 +993,6 @@
         chart.data.datasets[1].backgroundColor = series.wind.bg;
         chart.data.datasets[2].borderColor = series.fc.border;
         chart.data.datasets[2].backgroundColor = series.fc.bg;
-        chart.data.datasets[3].borderColor = series.battery.border;
-        chart.data.datasets[3].backgroundColor = series.battery.bg;
-        chart.data.datasets[4].borderColor = series.ems.border;
-        chart.data.datasets[4].backgroundColor = series.ems.bg;
         chart.update('none');
     }
 
@@ -1033,14 +1021,10 @@
         chart.data.datasets[0].data = [...(state.chartData.solar?.data || [])];
         chart.data.datasets[1].data = [...(state.chartData.wind?.data || [])];
         chart.data.datasets[2].data = [...(state.chartData.fc?.data || [])];
-        chart.data.datasets[3].data = [...(state.chartData.battery?.data || [])];
-        chart.data.datasets[4].data = [...(state.chartData.ems?.data || [])];
 
         chart.data.datasets[0].hidden = state.preferences.visible.solar === false;
         chart.data.datasets[1].hidden = state.preferences.visible.wind === false;
         chart.data.datasets[2].hidden = state.preferences.visible.fc === false;
-        chart.data.datasets[3].hidden = state.preferences.visible.battery === false;
-        chart.data.datasets[4].hidden = state.preferences.visible.ems === false;
         chart.update('none');
     }
 
@@ -1288,6 +1272,20 @@
             document.getElementById('val-battery').textContent = '65.00';
             document.getElementById('val-ems').textContent = '0.00';
 
+            // Reset battery animation
+            const levelEl = document.getElementById('battery-level');
+            if (levelEl) {
+                levelEl.style.height = '65%';
+                levelEl.style.background = 'linear-gradient(180deg, var(--battery) 0%, color-mix(in srgb, var(--battery) 80%, black) 100%)';
+            }
+            const socEl = document.getElementById('battery-soc-display');
+            if (socEl) socEl.textContent = '65%';
+            const statusEl = document.querySelector('.battery-status');
+            if (statusEl) {
+                statusEl.textContent = 'Idle';
+                statusEl.style.color = 'var(--text-secondary)';
+            }
+
             showToast('Session cleared', 'info');
         },
     };
@@ -1436,4 +1434,56 @@
     // Boot
     document.addEventListener('DOMContentLoaded', init);
 
+    function updateBatteryAnimation() {
+        if (!state.latestResults) return;
+
+        const soc = state.batterySoC; // Use hardcoded SOC for animation
+        const netPower = state.latestResults.netPower || 0;
+
+        // Update battery level
+        const levelEl = document.getElementById('battery-level');
+        if (levelEl) {
+            levelEl.style.width = `${soc}%`;
+            // Color based on SOC: green to red
+            const red = Math.round(239 - (239 - 16) * (soc / 100));
+            const green = Math.round(44 + (185 - 44) * (soc / 100));
+            const blue = Math.round(44 + (129 - 44) * (soc / 100));
+            levelEl.style.background = `linear-gradient(90deg, rgb(${red}, ${green}, ${blue}) 0%, color-mix(in srgb, rgb(${red}, ${green}, ${blue}) 80%, black) 100%)`;
+        }
+
+        // Update SOC display
+        const socEl = document.getElementById('battery-soc-display');
+        if (socEl) {
+            socEl.textContent = `${Math.round(soc)}%`;
+        }
+
+        // Update status
+        const statusEl = document.querySelector('.battery-status');
+        if (statusEl) {
+            if (netPower > 0) {
+                statusEl.textContent = 'Charging';
+                statusEl.style.color = 'var(--success)';
+            } else if (netPower < 0) {
+                statusEl.textContent = 'Discharging';
+                statusEl.style.color = 'var(--warning)';
+            } else {
+                statusEl.textContent = 'Idle';
+                statusEl.style.color = 'var(--text-secondary)';
+            }
+        }
+    }
+
+    function startBatteryDischarge() {
+        if (state.dischargeInterval) clearInterval(state.dischargeInterval);
+        state.batterySoC = 100;
+        state.dischargeInterval = setInterval(() => {
+            state.batterySoC = Math.max(0, state.batterySoC - 0.1667);
+            updateBatteryAnimation();
+            PersistenceManager.saveBatterySoC();
+        }, 1000);
+    }
+
 })();
+
+
+

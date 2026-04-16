@@ -20,8 +20,8 @@
     <!-- App CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-<body>
-    <div class="app-shell">
+    <body>
+    <div class="app-shell" id="app-shell">
 
         <!-- ═══ Main Content ═══ -->
         <main class="main-content">
@@ -101,10 +101,6 @@
                                             <span class="metric-label">Battery SoC</span>
                                             <span class="metric-value"><span id="val-battery">65.00</span> %</span>
                                         </div>
-                                        <div class="analytics-metric ems">
-                                            <span class="metric-label">EMS Grid</span>
-                                            <span class="metric-value"><span id="val-ems">0.00</span> W</span>
-                                        </div>
                                     </div>
 
                                     <div class="chart-wrapper main-analytics-chart-wrapper">
@@ -126,6 +122,25 @@
                                 </div>
                             </div><!-- /dashboard-grid -->
                         </div><!-- /central-analytics-panel -->
+
+                        <!-- Battery Animation -->
+                        <div class="battery-animation-panel">
+                            <div class="section-header">
+                                <h2><i class="fa-solid fa-car-battery" style="color: var(--battery); margin-right: 0.4rem;"></i> Battery State of Charge</h2>
+                            </div>
+                            <div class="battery-container">
+                                <div class="battery-icon">
+                                    <div class="battery-body">
+                                        <div class="battery-level" id="battery-level"></div>
+                                    </div>
+                                    <div class="battery-terminal"></div>
+                                </div>
+                                <div class="battery-info">
+                                    <div class="battery-soc-value" id="battery-soc-display">65%</div>
+                                    <div class="battery-status">Charging</div>
+                                </div>
+                            </div>
+                        </div>
                     </div><!-- /landmark-panel-body -->
                 </div><!-- /landmark-panel -->
             </div><!-- /page-content -->
@@ -161,20 +176,6 @@
                 <span class="toggle-label"><i class="fa-solid fa-flask" style="color:var(--fc)"></i> Fuel Cell</span>
                 <label class="toggle-switch">
                     <input type="checkbox" checked data-toggle="fc">
-                    <span class="toggle-slider"></span>
-                </label>
-            </div>
-            <div class="toggle-row">
-                <span class="toggle-label"><i class="fa-solid fa-car-battery" style="color:var(--battery)"></i> Battery SoC</span>
-                <label class="toggle-switch">
-                    <input type="checkbox" checked data-toggle="battery">
-                    <span class="toggle-slider"></span>
-                </label>
-            </div>
-            <div class="toggle-row">
-                <span class="toggle-label"><i class="fa-solid fa-network-wired" style="color:var(--ems)"></i> EMS Grid</span>
-                <label class="toggle-switch">
-                    <input type="checkbox" checked data-toggle="ems">
                     <span class="toggle-slider"></span>
                 </label>
             </div>
