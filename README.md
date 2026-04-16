@@ -45,7 +45,7 @@ This project was developed as part of the **Industrial Networking & Artificial I
 | Maps | Leaflet.js |
 | Charts | Chart.js |
 | Weather API | Open-Meteo |
-| Machine Learning | Scikit-learn, Pandas, NumPy |
+| Machine Learning | Scikit-learn, Pandas, NumPy, Joblib |
 | Data Visualization | Chart.js, Plotly (notebooks) |
 | Model Serialization | Pickle, Joblib |
 | Version Control | Git + GitHub |
@@ -160,14 +160,14 @@ Each energy subsystem has its own dedicated dataset collected from the physical 
 
 Each subsystem uses a separately trained model:
 
-| Model | Algorithm | Target Variable | Status |
+| Model | Key Inputs | Target Variable | Status |
 |---|---|---|---|
-| `solar_model.pkl` | Random Forest Regressor | P_SOL_total (W) | ✅ Active |
-| `wind_model.pkl` | Random Forest Regressor | P_Wind (W) | ✅ Active |
-| `fc_model.pkl` | Gradient Boosting Regressor | P_FC (W), Efficiency_FC (%) | ✅ Active |
-| `h2_production_model.pkl` | — | H2 production rate | ✅ Active |
-| `battery_model.pkl` | Random Forest Regressor | SoC (%), V_WB (V) | ⚠️ Fallback to physics |
-| `ems_model.pkl` | Random Forest Classifier/Regressor | net_power_balance (W), active_source | ⚠️ Fallback to physics |
+| `solar_model.pkl` | Irradiance, Temp, Angle | Power (W) | ✅ Integrated |
+| `wind_model.pkl` | Wind Speed | Power (W) | ✅ Integrated |
+| `fc_model.pkl` | H2 Flow | Power (W) | ✅ Integrated |
+| `h2_production_model.pkl` | — | H2 Rate | 🔬 In Dev |
+| `battery_model.pkl` | — | SoC (%), V_WB (V) | ⚠️ Physics Fallback |
+| `ems_model.pkl` | — | Power Balance | ⚠️ Physics Fallback |
 
 > Models are retrained as more data is collected from the station. See `data_generator.py` for the training pipeline and `notebooks/` for development examples.
 
@@ -190,11 +190,11 @@ Each subsystem uses a separately trained model:
 
 | Phase | Period | Deliverable |
 |---|---|---|
-| Data Collection & EDA | Feb 2026 → Mar 2026 | Clean datasets for all 5 subsystems |
-| ML Model Development | Mar 2026 → Apr 2026 | Trained & validated models |
-| Web App Development | Mar 2026 → Apr 2026 | Functional Flask application with auth & maps |
-| Integration & Testing | Apr 2026 → May 2026 | Fully integrated simulator with animations |
-| Documentation & Delivery | May 2026 | Final report + deployment |
+| Data Collection & EDA | Feb 2025 → Mar 2025 | Clean datasets for all 5 subsystems |
+| ML Model Development | Mar 2025 → Apr 2025 | Trained & validated models |
+| Web App Development | Mar 2025 → Apr 2025 | Functional Flask application with auth & maps |
+| Integration & Testing | Apr 2025 → May 2025 | Fully integrated simulator with animations |
+| Documentation & Delivery | May 2025 | Final report + deployment |
 
 ---
 
