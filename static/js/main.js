@@ -1,9 +1,12 @@
+// Firebase Modular SDK imports
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
+
 /* ═══════════════════════════════════════════════════════════════
    NEL Simulator — Frontend Application
    Real-time renewable energy simulation with map-based input
    ═══════════════════════════════════════════════════════════════ */
 
-(function () {
     'use strict';
 
     /* ── Configuration ─────────────────────────────────────── */
@@ -20,7 +23,7 @@
         SEARCH_DEBOUNCE_MS: 400,
     };
 
-    /* ── Firebase Configuration ─────────────────────────────── */
+    // Firebase config and initialization
     const firebaseConfig = {
         apiKey: "AIzaSyAUFm9a657qFueCDddSyy6vm2swHEN19tg",
         authDomain: "se-nel.firebaseapp.com",
@@ -30,10 +33,10 @@
         appId: "1:252917296517:web:4c9d07820fd72443dc68ec",
         measurementId: "G-3RCW3MY9D2"
     };
-
-    // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    console.log('✅ Firebase initialized');
+    console.log('🔐 Auth module loaded');
 
     function cssVar(name) {
         return getComputedStyle(document.body).getPropertyValue(name).trim();
@@ -108,7 +111,7 @@
         dischargeInterval: null,
     };
 
-    /* ══════════════════════════════════════════════════════════
+    /* ══════════════════════════════════════��═══════════════════
        MODULE 1 — Toast Notifications
        ══════════════════════════════════════════════════════════ */
     function showToast(message, type = 'info', duration = 4000) {
@@ -1117,7 +1120,7 @@
 
     /* ══════════════════════════════════════════════════════════
        MODULE 6 — Auto-Update Engine
-       ══════════════════════════════════════════════════════════ */
+       ════════════════════════════════════════════���═════════════ */
     function startAutoUpdate() {
         stopAutoUpdate();
 
@@ -1363,6 +1366,7 @@
        MODULE 8 — Firebase Authentication
        ══════════════════════════════════════════════════════════ */
     function initFirebaseAuth() {
+        console.log('🚀 Initializing Firebase Auth Module...');
         const authModal = document.getElementById('auth-modal');
         const appShell = document.getElementById('app-shell');
         const loginForm = document.getElementById('auth-form');
@@ -1373,6 +1377,15 @@
         const signupError = document.getElementById('signup-error');
         const userEmailEl = document.getElementById('user-email');
         const logoutBtn = document.getElementById('logout-btn');
+
+        console.log('✓ Auth DOM elements loaded:', {
+            authModal: !!authModal,
+            appShell: !!appShell,
+            loginForm: !!loginForm,
+            signupForm: !!signupForm,
+            loginToggle: !!loginToggle,
+            signupToggle: !!signupToggle
+        });
 
         // Show/hide modal
         function showModal(show, signup) {
@@ -1406,7 +1419,7 @@
         }
 
         // Listen to auth state changes
-        auth.onAuthStateChanged((user) => {
+        onAuthStateChanged(auth, (user) => {
             updateAuthUI(user);
         });
 
@@ -1416,12 +1429,25 @@
             const email = document.getElementById('auth-email').value.trim();
             const password = document.getElementById('auth-password').value;
 
+            // Clear previous errors
+            loginError.textContent = '';
+
+            if (!email || !password) {
+                loginError.textContent = 'Please fill in all fields';
+                console.warn('Login: Empty email or password');
+                return;
+            }
+
             try {
-                await auth.signInWithEmailAndPassword(email, password);
+                console.log('Attempting login with:', email);
+                await signInWithEmailAndPassword(auth, email, password);
+                console.log('Login successful');
                 showToast('Signed in successfully', 'success');
                 loginForm.reset();
             } catch (error) {
+                console.error('Login error:', error.message);
                 loginError.textContent = error.message;
+                loginError.style.display = 'block';
             }
         };
 
@@ -1432,40 +1458,65 @@
             const password = document.getElementById('signup-password').value;
             const confirmPassword = document.getElementById('signup-confirm').value;
 
+            // Clear previous errors
+            signupError.textContent = '';
+
+            if (!email || !password || !confirmPassword) {
+                signupError.textContent = 'Please fill in all fields';
+                console.warn('Signup: Empty fields');
+                return;
+            }
+
             // Validation
             if (password !== confirmPassword) {
                 signupError.textContent = 'Passwords do not match.';
+                signupError.style.display = 'block';
+                console.warn('Signup: Passwords do not match');
                 return;
             }
 
             if (password.length < 6) {
                 signupError.textContent = 'Password must be at least 6 characters.';
+                signupError.style.display = 'block';
+                console.warn('Signup: Password too short');
                 return;
             }
 
             try {
-                await auth.createUserWithEmailAndPassword(email, password);
+                console.log('Attempting signup with:', email);
+                await createUserWithEmailAndPassword(auth, email, password);
+                console.log('Signup successful');
                 showToast('Account created successfully', 'success');
                 signupForm.reset();
             } catch (error) {
+                console.error('Signup error:', error.message);
                 signupError.textContent = error.message;
+                signupError.style.display = 'block';
             }
         };
 
         // Toggle between login/signup
-        loginToggle.onclick = function(e) {
+        loginToggle.addEventListener('click', function(e) {
+            console.log('🔄 Login toggle clicked!');
             e.preventDefault();
+            e.stopPropagation();
+            console.log('🔄 Switching to signup form...');
             showModal(true, true);
-        };
-        signupToggle.onclick = function(e) {
+            console.log('🔄 Form switch complete');
+        });
+        signupToggle.addEventListener('click', function(e) {
+            console.log('🔄 Signup toggle clicked!');
             e.preventDefault();
+            e.stopPropagation();
+            console.log('🔄 Switching to login form...');
             showModal(true, false);
-        };
+            console.log('🔄 Form switch complete');
+        });
 
         // Logout handler
         logoutBtn.addEventListener('click', async () => {
             try {
-                await auth.signOut();
+                await signOut(auth);
                 showToast('Signed out successfully', 'info');
             } catch (error) {
                 showToast('Error signing out: ' + error.message, 'error');
@@ -1508,7 +1559,26 @@
                 icon.className = 'fa-solid fa-eye';
             }
         });
+
+        console.log('✅ Firebase Auth Module initialized successfully');
     }
+
+    // Debug function for testing
+    window.testAuthToggle = function() {
+        console.log('🧪 Testing auth toggle...');
+        const loginToggle = document.getElementById('auth-signup-toggle');
+        const signupToggle = document.getElementById('signup-login-toggle');
+
+        console.log('Login toggle element:', loginToggle);
+        console.log('Signup toggle element:', signupToggle);
+
+        if (loginToggle) {
+            console.log('Clicking login toggle...');
+            loginToggle.click();
+        } else {
+            console.error('Login toggle not found!');
+        }
+    };
 
     /* ══════════════════════════════════════════════════════════
        MODULE 9 — App Initialization
@@ -1651,8 +1721,4 @@
             PersistenceManager.saveBatterySoC();
         }, 1000);
     }
-
-})();
-
-
 

@@ -150,9 +150,12 @@
     color: var(--danger);
     font-size: 0.97em;
     text-align: center;
-    padding: 0.5em;
-    background: rgba(239, 68, 68, 0.08);
+    padding: 0.6em 0.8em;
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.25);
     border-radius: 6px;
+    word-wrap: break-word;
+    display: block;
 }
 
 /* ─── Top Bar Auth Elements ─── */
