@@ -17,31 +17,6 @@
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 
-    <!-- Firebase SDK (module version, correct for your setup) -->
-    <script type="module">
-      // Import the functions you need from the SDKs you need
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-      import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-analytics.js";
-      // TODO: Add SDKs for Firebase products that you want to use
-      // https://firebase.google.com/docs/web/setup#available-libraries
-
-      // Your web app's Firebase configuration
-      // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-      const firebaseConfig = {
-        apiKey: "AIzaSyAUFm9a657qFueCDddSyy6vm2swHEN19tg",
-        authDomain: "se-nel.firebaseapp.com",
-        projectId: "se-nel",
-        storageBucket: "se-nel.firebasestorage.app",
-        messagingSenderId: "252917296517",
-        appId: "1:252917296517:web:4c9d07820fd72443dc68ec",
-        measurementId: "G-3RCW3MY9D2"
-      };
-
-      // Initialize Firebase
-      const app = initializeApp(firebaseConfig);
-      const analytics = getAnalytics(app);
-    </script>
-
     <!-- App CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
@@ -61,6 +36,7 @@
                     </button>
                 </div>
                 <button type="submit" class="auth-btn auth-btn-primary">Sign In</button>
+                <div class="auth-toggle"><a href="#" id="auth-reset-password">Forgot password?</a></div>
                 <div class="auth-toggle">No account? <a href="#" id="auth-signup-toggle">Sign up</a></div>
             </form>
 

@@ -1,6 +1,14 @@
 // Firebase Modular SDK imports
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
+import {
+    getAuth,
+    onAuthStateChanged,
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    signOut,
+    sendEmailVerification,
+    sendPasswordResetEmail
+} from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
 
 /* ═══════════════════════════════════════════════════════════════
    NEL Simulator — Frontend Application
@@ -109,6 +117,8 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
         selectedModelKey: null,
         latestModelDetails: {},
         dischargeInterval: null,
+        authUser: null,
+        appInitialized: false,
     };
 
     /* ══════════════════════════════════════��═══════════════════
@@ -528,9 +538,15 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
        MODULE 4 — Simulation Pipeline
        ══════════════════════════════════════════════════════════ */
     async function fetchPrediction(endpoint, data) {
+        const user = auth.currentUser;
+        if (!user) throw new Error('auth-required');
+        const idToken = await user.getIdToken();
         const res = await fetch(`/api/predict/${endpoint}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Authorization': `Bearer ${idToken}`,
+                'Content-Type': 'application/json',
+            },
             body: JSON.stringify(data),
         });
         if (!res.ok) throw new Error(`${res.status}`);
@@ -1162,7 +1178,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
        MODULE 7 — Persistence Manager
        ══════════════════════════════════════════════════════════ */
     const PersistenceManager = {
-        keys: {
+        baseKeys: {
             location: 'nel_location',
             charts: 'nel_charts',
             preferences: 'nel_preferences',
@@ -1170,9 +1186,19 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
             session: 'nel_unified_session',
         },
 
+        key(name) {
+            const uid = state.authUser?.uid || auth.currentUser?.uid;
+            if (!uid) return this.baseKeys[name];
+            return `${this.baseKeys[name]}_${uid}`;
+        },
+
+        allKeys() {
+            return Object.keys(this.baseKeys).map(name => this.key(name));
+        },
+
         saveLocation() {
             if (state.location) {
-                localStorage.setItem(this.keys.location, JSON.stringify(state.location));
+                localStorage.setItem(this.key('location'), JSON.stringify(state.location));
             }
             this.saveUnifiedSession();
         },
@@ -1184,17 +1210,17 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
                 results: state.latestResults,
                 lastUpdatedTimes: state.lastUpdatedTimes,
             };
-            localStorage.setItem(this.keys.charts, JSON.stringify(payload));
+            localStorage.setItem(this.key('charts'), JSON.stringify(payload));
             this.saveUnifiedSession();
         },
 
         savePreferences() {
-            localStorage.setItem(this.keys.preferences, JSON.stringify(state.preferences));
+            localStorage.setItem(this.key('preferences'), JSON.stringify(state.preferences));
             this.saveUnifiedSession();
         },
 
         saveBatterySoC() {
-            localStorage.setItem(this.keys.batterySoC, JSON.stringify(state.batterySoC));
+            localStorage.setItem(this.key('batterySoC'), JSON.stringify(state.batterySoC));
             this.saveUnifiedSession();
         },
 
@@ -1208,13 +1234,13 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
                 lastUpdatedTimes: state.lastUpdatedTimes,
                 timestamp: Date.now(),
             };
-            localStorage.setItem(this.keys.session, JSON.stringify(payload));
+            localStorage.setItem(this.key('session'), JSON.stringify(payload));
         },
 
         loadAll() {
             // Prefer unified session to keep all landmark dashboard state together.
             try {
-                const unified = JSON.parse(localStorage.getItem(this.keys.session));
+                const unified = JSON.parse(localStorage.getItem(this.key('session')));
                 if (unified && typeof unified === 'object') {
                     applySyncedSession(unified);
                 }
@@ -1222,7 +1248,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 
             // Location
             try {
-                const loc = JSON.parse(localStorage.getItem(this.keys.location));
+                const loc = JSON.parse(localStorage.getItem(this.key('location')));
                 if (loc && loc.lat && loc.lng) {
                     state.location = loc;
                 }
@@ -1230,7 +1256,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 
             // Chart data
             try {
-                const saved = JSON.parse(localStorage.getItem(this.keys.charts));
+                const saved = JSON.parse(localStorage.getItem(this.key('charts')));
                 if (saved && saved.data) {
                     state.chartData = saved.data;
                     state.latestResults = saved.results || null;
@@ -1240,7 +1266,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 
             // Preferences
             try {
-                const prefs = JSON.parse(localStorage.getItem(this.keys.preferences));
+                const prefs = JSON.parse(localStorage.getItem(this.key('preferences')));
                 if (prefs) {
                     state.preferences = {
                         ...state.preferences,
@@ -1255,7 +1281,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 
             // Battery SoC
             try {
-                const soc = JSON.parse(localStorage.getItem(this.keys.batterySoC));
+                const soc = JSON.parse(localStorage.getItem(this.key('batterySoC')));
                 if (typeof soc === 'number') {
                     state.batterySoC = soc;
                 }
@@ -1263,7 +1289,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
         },
 
         clearAll() {
-            Object.values(this.keys).forEach(k => localStorage.removeItem(k));
+            this.allKeys().forEach(k => localStorage.removeItem(k));
             state.location = null;
             state.batterySoC = CONFIG.DEFAULT_SOC;
             state.latestResults = null;
@@ -1373,10 +1399,28 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
         const signupForm = document.getElementById('signup-form');
         const loginToggle = document.getElementById('auth-signup-toggle');
         const signupToggle = document.getElementById('signup-login-toggle');
+        const resetPasswordLink = document.getElementById('auth-reset-password');
         const loginError = document.getElementById('auth-error');
         const signupError = document.getElementById('signup-error');
         const userEmailEl = document.getElementById('user-email');
         const logoutBtn = document.getElementById('logout-btn');
+
+        function friendlyAuthError(error) {
+            const code = error?.code || '';
+            const messages = {
+                'auth/email-already-in-use': 'An account already exists for this email.',
+                'auth/invalid-email': 'Enter a valid email address.',
+                'auth/invalid-credential': 'The email or password is incorrect.',
+                'auth/missing-password': 'Enter your password.',
+                'auth/network-request-failed': 'Network error. Check your connection and try again.',
+                'auth/too-many-requests': 'Too many attempts. Please wait a moment and try again.',
+                'auth/user-disabled': 'This account has been disabled.',
+                'auth/user-not-found': 'No account exists for this email.',
+                'auth/weak-password': 'Use a stronger password.',
+                'auth/wrong-password': 'The email or password is incorrect.',
+            };
+            return messages[code] || 'Authentication failed. Please try again.';
+        }
 
         console.log('✓ Auth DOM elements loaded:', {
             authModal: !!authModal,
@@ -1407,11 +1451,14 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
         function updateAuthUI(user) {
             if (user) {
                 // User is signed in
+                state.authUser = user;
                 userEmailEl.textContent = user.email;
                 logoutBtn.style.display = 'flex';
                 showModal(false, false);
+                initializeAuthenticatedApp();
             } else {
                 // User is signed out
+                state.authUser = null;
                 userEmailEl.textContent = '';
                 logoutBtn.style.display = 'none';
                 showModal(true, false);
@@ -1445,8 +1492,8 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
                 showToast('Signed in successfully', 'success');
                 loginForm.reset();
             } catch (error) {
-                console.error('Login error:', error.message);
-                loginError.textContent = error.message;
+                console.error('Login error:', error);
+                loginError.textContent = friendlyAuthError(error);
                 loginError.style.display = 'block';
             }
         };
@@ -1484,16 +1531,37 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 
             try {
                 console.log('Attempting signup with:', email);
-                await createUserWithEmailAndPassword(auth, email, password);
+                const credential = await createUserWithEmailAndPassword(auth, email, password);
+                await sendEmailVerification(credential.user);
                 console.log('Signup successful');
-                showToast('Account created successfully', 'success');
+                showToast('Account created. Verification email sent.', 'success', 4000);
                 signupForm.reset();
             } catch (error) {
-                console.error('Signup error:', error.message);
-                signupError.textContent = error.message;
+                console.error('Signup error:', error);
+                signupError.textContent = friendlyAuthError(error);
                 signupError.style.display = 'block';
             }
         };
+
+        resetPasswordLink.addEventListener('click', async function(e) {
+            e.preventDefault();
+            const email = document.getElementById('auth-email').value.trim();
+            loginError.textContent = '';
+            if (!email) {
+                loginError.textContent = 'Enter your email, then request a password reset.';
+                loginError.style.display = 'block';
+                return;
+            }
+
+            try {
+                await sendPasswordResetEmail(auth, email);
+                showToast('Password reset email sent', 'success', 3500);
+            } catch (error) {
+                console.error('Password reset error:', error);
+                loginError.textContent = friendlyAuthError(error);
+                loginError.style.display = 'block';
+            }
+        });
 
         // Toggle between login/signup
         loginToggle.addEventListener('click', function(e) {
@@ -1518,8 +1586,9 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
             try {
                 await signOut(auth);
                 showToast('Signed out successfully', 'info');
+                window.location.reload();
             } catch (error) {
-                showToast('Error signing out: ' + error.message, 'error');
+                showToast(friendlyAuthError(error), 'error');
             }
         });
 
@@ -1583,12 +1652,12 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
     /* ══════════════════════════════════════════════════════════
        MODULE 9 — App Initialization
        ══════════════════════════════════════════════════════════ */
-    async function init() {
-        // Initialize Firebase Auth
-        initFirebaseAuth();
+    async function initializeAuthenticatedApp() {
+        if (state.appInitialized) return;
+        state.appInitialized = true;
 
         // Load persisted state
-        const hadSavedData = !!localStorage.getItem('nel_charts');
+        const hadSavedData = !!localStorage.getItem(PersistenceManager.key('charts'));
         PersistenceManager.loadAll();
 
         // Initialize UI modules
@@ -1614,7 +1683,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 
         // Cross-tab synchronization: keep landmark dashboard state identical in all tabs.
         window.addEventListener('storage', (event) => {
-            if (event.key !== PersistenceManager.keys.session || !event.newValue) return;
+            if (event.key !== PersistenceManager.key('session') || !event.newValue) return;
             if (state.isApplyingExternalSync) return;
             try {
                 const payload = JSON.parse(event.newValue);
@@ -1668,6 +1737,10 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
         } catch {
             updateApiStatus(false);
         }
+    }
+
+    function init() {
+        initFirebaseAuth();
     }
 
     // Boot
